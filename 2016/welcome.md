@@ -1,264 +1,76 @@
 
-Welcome to StackEdit!
+关于代码发布
 ===================
 
 
-Hey! I'm your first Markdown document in **StackEdit**[^stackedit]. Don't delete me, I'm very helpful! I can be recovered anyway in the **Utils** tab of the <i class="icon-cog"></i> **Settings** dialog.
+发布静态资源看你们自己的部署方案吧。一般是公司内撘一个ci系统，比如jenkins，然后在上面安装运维提供的部署脚本，然后配置gitlab（通常不用github，防止泄密）的webhook，一有提交就发请求到jenkins上，jenkins拉取代码，调用fis构建，然后把产出的代码通过运维脚本推送到测试或者生产环境。大致的流程是：
 
-----------
+- 内网搭建gitlab/svn
+- 内网搭建ci系统（jenkins）
+- 在ci系统所在机器上安装fis、运维推送脚本
+- 配置gitlab的webhook，一有提交就发请求给jenkins
+- jenkins中创建job，填写gitlab中的url，填写hook脚本
+运行效果：
 
 
-Documents
--------------
+- 开发人员提交代码，gitlab触发webhook，推送信息到jenkins
+- jenkins根据推送的信息执行对应的job
+- job中的脚本clone对应的分支，调用构建工具对代码进行构建
+- 使用运维脚本将构建完成的结果推送到测试/生产服务器。
 
-StackEdit stores your documents in your browser, which means all your documents are automatically saved locally and are accessible **offline!**
+![enter image description here](https://cloud.githubusercontent.com/assets/536297/8396008/760001e6-1dc5-11e5-972f-404614ac5101.png)
 
-> **Note:**
-
-> - StackEdit is accessible offline after the application has been loaded for the first time.
-> - Your local documents are not shared between different browsers or computers.
-> - Clearing your browser's data may **delete all your local documents!** Make sure your documents are synchronized with **Google Drive** or **Dropbox** (check out the [<i class="icon-refresh"></i> Synchronization](#synchronization) section).
-
-#### <i class="icon-file"></i> Create a document
-
-The document panel is accessible using the <i class="icon-folder-open"></i> button in the navigation bar. You can create a new document by clicking <i class="icon-file"></i> **New document** in the document panel.
-
-#### <i class="icon-folder-open"></i> Switch to another document
-
-All your local documents are listed in the document panel. You can switch from one to another by clicking a document in the list or you can toggle documents using <kbd>Ctrl+[</kbd> and <kbd>Ctrl+]</kbd>.
-
-#### <i class="icon-pencil"></i> Rename a document
-
-You can rename the current document by clicking the document title in the navigation bar.
-
-#### <i class="icon-trash"></i> Delete a document
-
-You can delete the current document by clicking <i class="icon-trash"></i> **Delete document** in the document panel.
-
-#### <i class="icon-hdd"></i> Export a document
-
-You can save the current document to a file by clicking <i class="icon-hdd"></i> **Export to disk** from the <i class="icon-provider-stackedit"></i> menu panel.
-
-> **Tip:** Check out the [<i class="icon-upload"></i> Publish a document](#publish-a-document) section for a description of the different output formats.
 
 
 ----------
 
+> 上图中的SCRAT是我们基于FIS定制的自己的工具
 
-Synchronization
--------------------
 
-StackEdit can be combined with <i class="icon-provider-gdrive"></i> **Google Drive** and <i class="icon-provider-dropbox"></i> **Dropbox** to have your documents saved in the *Cloud*. The synchronization mechanism takes care of uploading your modifications or downloading the latest version of your documents.
+总之效果就是【提交代码】→【自动部署】，【自动部署】包括了【构建】+【代码推送】
 
-> **Note:**
+> 我所在的前一家公司里，其实也是这么部署。开发人员提交代码到dev，ci`检测`到有代码更新，则执行jobs，发布到开发环境。
+> dev merge 到master，jenkins执行job，此时为测试环境。
+> 大概与上图的流程是一致。
 
-> - Full access to **Google Drive** or **Dropbox** is required to be able to import any document in StackEdit. Permission restrictions can be configured in the settings.
-> - Imported documents are downloaded in your browser and are not transmitted to a server.
-> - If you experience problems saving your documents on Google Drive, check and optionally disable browser extensions, such as Disconnect.
+## 如果
+以上是在有专门的运维人员的情况下发布流程，因为涉及到jenkins，运维脚本等需要专业人员来操作，那么小型公司，小型团队如果想到构建一套代码发布系统，需要通过哪些渠道，学习哪些知识才能做到这件事情？
 
-#### <i class="icon-refresh"></i> Open a document
 
-You can open a document from <i class="icon-provider-gdrive"></i> **Google Drive** or the <i class="icon-provider-dropbox"></i> **Dropbox** by opening the <i class="icon-refresh"></i> **Synchronize** sub-menu and by clicking **Open from...**. Once opened, any modification in your document will be automatically synchronized with the file in your **Google Drive** / **Dropbox** account.
+开发流程方面，至少涉及四个平台：
 
-#### <i class="icon-refresh"></i> Save a document
+- 代码托管
+- 持续集成
+- 代码库
+- 运维操作
 
-You can save any document by opening the <i class="icon-refresh"></i> **Synchronize** sub-menu and by clicking **Save on...**. Even if your document is already synchronized with **Google Drive** or **Dropbox**, you can export it to a another location. StackEdit can synchronize one document with multiple locations and accounts.
 
-#### <i class="icon-refresh"></i> Synchronize a document
+『代码托管平台』主要是git/svn的托管平台，现在应该很多人在用 gitlab，用这类平台的主要目的是利用其中的『hook』功能，就是可以在这类平台上设置代码提交之后要做哪些操作，这样我们可以在开发者提交代码之后把提交信息推送到持续集成平台。
 
-Once your document is linked to a <i class="icon-provider-gdrive"></i> **Google Drive** or a <i class="icon-provider-dropbox"></i> **Dropbox** file, StackEdit will periodically (every 3 minutes) synchronize it by downloading/uploading any modification. A merge will be performed if necessary and conflicts will be detected.
+『持续集成平台』常用来做自动构建和测试，主流的是 Jenkins CI 和 Gitlab CI ，代码托管平台发现有代码提交之后，会把提交信息推送到持续集成平台，持续集成平台会根据提交信息拉取指定的git/svn分支，然后根据开发者在平台上的配置对项目进行自动化构建和测试，然后把构建后的代码打个tar.gz包推送到代码库存储起来。
 
-If you just have modified your document and you want to force the synchronization, click the <i class="icon-refresh"></i> button in the navigation bar.
+『代码库平台』其实就是一个存储持续集成平台每次构建结果的地方，根据构建时间来存放，这样运维操作平台在部署的时候就可以从代码库拉取代码进行上线部署了。
 
-> **Note:** The <i class="icon-refresh"></i> button is disabled when you have no document to synchronize.
+『运维操作平台』主要的工作就是从代码库拉取指定的代码部署到指定的环境中。这些一般需要开发者操作，这里一般会有『上线单』的概念，每次发布前配置一份上线单，包括上线版本，上线说明，指定拉取的代码库中哪个代码包，部署到哪些机器上，部署顺序等。每个上线单可以视为一个部署版本，遇到问题需要回滚的时候直接重新执行之前稳定时期的上线单就行了。
 
-#### <i class="icon-refresh"></i> Manage document synchronization
+开发者提交代码后，整个持续集成的自动化的流程为：
 
-Since one document can be synchronized with multiple locations, you can list and manage synchronized locations by clicking <i class="icon-refresh"></i> **Manage synchronization** in the <i class="icon-refresh"></i> **Synchronize** sub-menu. This will let you remove synchronization locations that are associated to your document.
+>开发者：git push
+    → 代码托管平台：hook
+    → 持续集成平台：build && test && tar && push
+      → 代码库：save
 
-> **Note:** If you delete the file from **Google Drive** or from **Dropbox**, the document will no longer be synchronized with that location.
+部署过程就是：
 
-----------
+>运维操作平台：
+   * 创建上线单
+   * 说明部署原因
+   * 指定代码库的包(从代码库拉取)
+   * 指定部署机器
+   * 启动部署
+   * 记录上线单
+   * 回滚
 
+一个完整的自动化流程我感觉至少需要上述4个节点，其中前三个可以由前端自行组建，找个限制的台式机，配置好一点，装一个linux系统，撘gitlab、jenkins，jenkins自带归档功能（程序包列表），可以省掉代码库平台。与运维平台的打通（主要是代码库的接入部分）就要和你们的运维团队协商完成了，这个通常都不是什么难事。
 
-Publication
--------------
-
-Once you are happy with your document, you can publish it on different websites directly from StackEdit. As for now, StackEdit can publish on **Blogger**, **Dropbox**, **Gist**, **GitHub**, **Google Drive**, **Tumblr**, **WordPress** and on any SSH server.
-
-#### <i class="icon-upload"></i> Publish a document
-
-You can publish your document by opening the <i class="icon-upload"></i> **Publish** sub-menu and by choosing a website. In the dialog box, you can choose the publication format:
-
-- Markdown, to publish the Markdown text on a website that can interpret it (**GitHub** for instance),
-- HTML, to publish the document converted into HTML (on a blog for example),
-- Template, to have a full control of the output.
-
-> **Note:** The default template is a simple webpage wrapping your document in HTML format. You can customize it in the **Advanced** tab of the <i class="icon-cog"></i> **Settings** dialog.
-
-#### <i class="icon-upload"></i> Update a publication
-
-After publishing, StackEdit will keep your document linked to that publication which makes it easy for you to update it. Once you have modified your document and you want to update your publication, click on the <i class="icon-upload"></i> button in the navigation bar.
-
-> **Note:** The <i class="icon-upload"></i> button is disabled when your document has not been published yet.
-
-#### <i class="icon-upload"></i> Manage document publication
-
-Since one document can be published on multiple locations, you can list and manage publish locations by clicking <i class="icon-upload"></i> **Manage publication** in the <i class="icon-provider-stackedit"></i> menu panel. This will let you remove publication locations that are associated to your document.
-
-> **Note:** If the file has been removed from the website or the blog, the document will no longer be published on that location.
-
-----------
-
-
-Markdown Extra
---------------------
-
-StackEdit supports **Markdown Extra**, which extends **Markdown** syntax with some nice features.
-
-> **Tip:** You can disable any **Markdown Extra** feature in the **Extensions** tab of the <i class="icon-cog"></i> **Settings** dialog.
-
-> **Note:** You can find more information about **Markdown** syntax [here][2] and **Markdown Extra** extension [here][3].
-
-
-### Tables
-
-**Markdown Extra** has a special syntax for tables:
-
-Item     | Value
--------- | ---
-Computer | $1600
-Phone    | $12
-Pipe     | $1
-
-You can specify column alignment with one or two colons:
-
-| Item     | Value | Qty   |
-| :------- | ----: | :---: |
-| Computer | $1600 |  5    |
-| Phone    | $12   |  12   |
-| Pipe     | $1    |  234  |
-
-
-### Definition Lists
-
-**Markdown Extra** has a special syntax for definition lists too:
-
-Term 1
-Term 2
-:   Definition A
-:   Definition B
-
-Term 3
-
-:   Definition C
-
-:   Definition D
-
-	> part of definition D
-
-
-### Fenced code blocks
-
-GitHub's fenced code blocks are also supported with **Highlight.js** syntax highlighting:
-
-```
-// Foo
-var bar = 0;
-```
-
-> **Tip:** To use **Prettify** instead of **Highlight.js**, just configure the **Markdown Extra** extension in the <i class="icon-cog"></i> **Settings** dialog.
-
-> **Note:** You can find more information:
-
-> - about **Prettify** syntax highlighting [here][5],
-> - about **Highlight.js** syntax highlighting [here][6].
-
-
-### Footnotes
-
-You can create footnotes like this[^footnote].
-
-  [^footnote]: Here is the *text* of the **footnote**.
-
-
-### SmartyPants
-
-SmartyPants converts ASCII punctuation characters into "smart" typographic punctuation HTML entities. For example:
-
-|                  | ASCII                        | HTML              |
- ----------------- | ---------------------------- | ------------------
-| Single backticks | `'Isn't this fun?'`            | 'Isn't this fun?' |
-| Quotes           | `"Isn't this fun?"`            | "Isn't this fun?" |
-| Dashes           | `-- is en-dash, --- is em-dash` | -- is en-dash, --- is em-dash |
-
-
-### Table of contents
-
-You can insert a table of contents using the marker `[TOC]`:
-
-[TOC]
-
-
-### MathJax
-
-You can render *LaTeX* mathematical expressions using **MathJax**, as on [math.stackexchange.com][1]:
-
-The *Gamma function* satisfying $\Gamma(n) = (n-1)!\quad\forall n\in\mathbb N$ is via the Euler integral
-
-$$
-\Gamma(z) = \int_0^\infty t^{z-1}e^{-t}dt\,.
-$$
-
-> **Tip:** To make sure mathematical expressions are rendered properly on your website, include **MathJax** into your template:
-
-```
-<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
-```
-
-> **Note:** You can find more information about **LaTeX** mathematical expressions [here][4].
-
-
-### UML diagrams
-
-You can also render sequence diagrams like this:
-
-```sequence
-Alice->Bob: Hello Bob, how are you?
-Note right of Bob: Bob thinks
-Bob-->Alice: I am good thanks!
-```
-
-And flow charts like this:
-
-```flow
-st=>start: Start
-e=>end
-op=>operation: My Operation
-cond=>condition: Yes or No?
-
-st->op->cond
-cond(yes)->e
-cond(no)->op
-```
-
-> **Note:** You can find more information:
-
-> - about **Sequence diagrams** syntax [here][7],
-> - about **Flow charts** syntax [here][8].
-
-### Support StackEdit
-
-[![](https://cdn.monetizejs.com/resources/button-32.png)](https://monetizejs.com/authorize?client_id=ESTHdCYOi18iLhhO&summary=true)
-
-  [^stackedit]: [StackEdit](https://stackedit.io/) is a full-featured, open-source Markdown editor based on PageDown, the Markdown library used by Stack Overflow and the other Stack Exchange sites.
-
-
-  [1]: http://math.stackexchange.com/
-  [2]: http://daringfireball.net/projects/markdown/syntax "Markdown"
-  [3]: https://github.com/jmcmanus/pagedown-extra "Pagedown Extra"
-  [4]: http://meta.math.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference
-  [5]: https://code.google.com/p/google-code-prettify/
-  [6]: http://highlightjs.org/
-  [7]: http://bramp.github.io/js-sequence-diagrams/
-  [8]: http://adrai.github.io/flowchart.js/
+不推荐由持续集成平台直接推送构建结果到运维然后自动部署，这种方式非常危险，所以一定要有代码库，能记录历史版本，找到备份，方便回滚，而且运维操作是主动拉取代码，不是被动推送，增加了安全性
