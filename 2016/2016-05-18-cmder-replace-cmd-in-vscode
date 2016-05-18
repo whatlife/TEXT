@@ -14,5 +14,6 @@ OR
 
 ## 测试
 命令可以被执行，但只是打开cmder，而不能定位到当前文件所在的目录。。。估计是哪个环境变量整错了。
+哦，是bug，这个issue有说明[#6466](https://github.com/Microsoft/vscode/issues/6466)
 
 > Written with [StackEdit](https://stackedit.io/).
